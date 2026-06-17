@@ -1,4 +1,4 @@
-# VaultView
+# random-UE5-project
 
 An educational project created in Unreal Engine 5 (and C++). It features a perspective switching system (TPP to FPP), basic player statistics, and an item pickup system.
 
