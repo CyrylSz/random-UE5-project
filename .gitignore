@@ -1,0 +1,37 @@
+# Unreal Engine generated folders
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+
+# IDE configuration files
+.vs/
+.idea/
+.vscode/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Plugin compiled folders
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+
+# (Optional) Ignore generated map lighting data if it takes too much space
+# *_BuiltData.uasset
+
+# Ignore developer personal test folders
+Content/Developers/
+
+# Exclude licensed Marketplace assets (required for public repository)
+Content/ModularSciFiStation/
+Content/SciFi_BioLaboratory/
+Content/Adventure_Pack/
+Content/Assassin/
