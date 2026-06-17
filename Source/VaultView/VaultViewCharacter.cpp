@@ -11,6 +11,9 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "VaultView.h"
+#include "VaultViewHUDWidget.h"
+#include "Blueprint/UserWidget.h"
+#include "Kismet/GameplayStatics.h"
 
 AVaultViewCharacter::AVaultViewCharacter()
 {
@@ -55,6 +58,41 @@ AVaultViewCharacter::AVaultViewCharacter()
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+}
+
+void AVaultViewCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Create HUD widget from editor class
+	if (HUDWidgetClass)
+	{
+		HUDWidget = CreateWidget<UVaultViewHUDWidget>(GetWorld(), HUDWidgetClass);
+		if (HUDWidget)
+		{
+			HUDWidget->AddToViewport(); // Show on screen
+
+			// Bind widget functions to character delegates
+			OnDamaged.AddDynamic(HUDWidget, &UVaultViewHUDWidget::UpdateHP);
+			OnWaveChanged.AddDynamic(HUDWidget, &UVaultViewHUDWidget::UpdateWave);
+			OnKillsChanged.AddDynamic(HUDWidget, &UVaultViewHUDWidget::UpdateKills);
+			OnScoreChanged.AddDynamic(HUDWidget, &UVaultViewHUDWidget::UpdateScore);
+
+			// Refresh UI on game start
+			OnDamaged.Broadcast(HealthPoints, MaxHealthPoints);
+			OnWaveChanged.Broadcast(WaveCount);
+			OnKillsChanged.Broadcast(KillCount);
+			OnScoreChanged.Broadcast(Score);
+		}
+	}
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC)
+	{
+		PC->bShowMouseCursor = false;
+		PC->SetInputMode(FInputModeGameOnly());
+		UGameplayStatics::SetGamePaused(GetWorld(), false);
+	}
 }
 
 void AVaultViewCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -155,4 +193,56 @@ void AVaultViewCharacter::ToggleCameraPerspective()
 		FollowCamera->SetActive(true);
 		bUseControllerRotationYaw = false;
 	}
+}
+
+void AVaultViewCharacter::ApplyHealthChange(float HealthChange)
+{
+	// Clamp health points between 0 and MaxHealthPoints
+	HealthPoints = FMath::Clamp(HealthPoints + HealthChange, 0.0f, MaxHealthPoints);
+
+	OnDamaged.Broadcast(HealthPoints, MaxHealthPoints);
+
+	if (HealthPoints <= 0.0f)
+	{
+		ShowDeathScreen();
+	}
+}
+
+void AVaultViewCharacter::ShowDeathScreen()
+{
+	if (DeathWidgetClass)
+	{
+		UUserWidget* DeathWidget = CreateWidget<UUserWidget>(GetWorld(), DeathWidgetClass);
+		if (DeathWidget)
+		{
+			DeathWidget->AddToViewport();
+			
+			// Pause game and show mouse cursor
+			APlayerController* PC = Cast<APlayerController>(GetController());
+			if (PC)
+			{
+				PC->bShowMouseCursor = true;
+				PC->SetInputMode(FInputModeUIOnly());
+				UGameplayStatics::SetGamePaused(GetWorld(), true);
+			}
+		}
+	}
+}
+
+void AVaultViewCharacter::AddScore(int32 ScoreToAdd)
+{
+	Score += ScoreToAdd;
+	OnScoreChanged.Broadcast(Score);
+}
+
+void AVaultViewCharacter::AddKill()
+{
+	KillCount++;
+	OnKillsChanged.Broadcast(KillCount);
+}
+
+void AVaultViewCharacter::NextWave()
+{
+	WaveCount++;
+	OnWaveChanged.Broadcast(WaveCount);
 }

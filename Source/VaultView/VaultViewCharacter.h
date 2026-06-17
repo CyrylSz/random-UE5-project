@@ -18,6 +18,9 @@ DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
  *  A simple player-controllable third person character
  *  Implements a controllable orbiting camera
  */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDamagedSignature, float, CurrentHP, float, MaxHP);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStatsChangedSignature, int32, NewValue);
+
 UCLASS(abstract)
 class AVaultViewCharacter : public ACharacter
 {
@@ -57,6 +60,54 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Camera")
 	void ToggleCameraPerspective();
 
+	// Project required delegates
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnDamagedSignature OnDamaged;
+
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnStatsChangedSignature OnWaveChanged;
+
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnStatsChangedSignature OnKillsChanged;
+
+	// New project statistics
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
+	int32 KillCount = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
+	int32 WaveCount = 1;
+
+	// Score delegate
+	UPROPERTY(BlueprintAssignable, Category = "Events")
+	FOnStatsChangedSignature OnScoreChanged;
+
+	// Widget references (Type safety)
+	UPROPERTY(EditAnywhere, Category="UI")
+	TSubclassOf<class UVaultViewHUDWidget> HUDWidgetClass;
+
+	// Functions modifying stats during gameplay (Trigger delegates)
+	UFUNCTION(BlueprintCallable, Category = "Player Stats")
+	void AddScore(int32 ScoreToAdd);
+
+	UFUNCTION(BlueprintCallable, Category = "Player Stats")
+	void AddKill();
+
+	UFUNCTION(BlueprintCallable, Category = "Player Stats")
+	void NextWave();
+
+	UPROPERTY(EditAnywhere, Category="UI")
+	TSubclassOf<UUserWidget> DeathWidgetClass;
+
+	// Pointer to created HUD widget
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="UI")
+	TObjectPtr<class UVaultViewHUDWidget> HUDWidget;
+
+	// Safe function for applying damage and healing
+	UFUNCTION(BlueprintCallable, Category = "Player Stats")
+	void ApplyHealthChange(float HealthChange);
+
+	void ShowDeathScreen();
+
 protected:
 
 	/** Jump Input Action */
@@ -81,6 +132,7 @@ public:
 	AVaultViewCharacter();	
 
 protected:
+	virtual void BeginPlay() override;
 
 	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;

@@ -31,13 +31,8 @@ void APickupActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* O
 	{
 		UPickupData* ItemData = NewObject<UPickupData>(this, DataClass);
 		
-		PlayerCharacter->Score += ItemData->ScoreChange;
-		PlayerCharacter->HealthPoints += ItemData->HealthPointsChange;
-		
-		if (PlayerCharacter->HealthPoints > PlayerCharacter->MaxHealthPoints)
-		{
-			PlayerCharacter->HealthPoints = PlayerCharacter->MaxHealthPoints;
-		}
+		PlayerCharacter->AddScore(ItemData->ScoreChange);
+		PlayerCharacter->ApplyHealthChange(ItemData->HealthPointsChange);
 
 		PlayerCharacter->Inventory.Add(ItemData);
 
