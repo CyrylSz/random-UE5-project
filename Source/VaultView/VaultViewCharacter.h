@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "DamageableInterface.h"
 #include "VaultViewCharacter.generated.h"
 
 class USpringArmComponent;
@@ -22,7 +23,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDamagedSignature, float, Current
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStatsChangedSignature, int32, NewValue);
 
 UCLASS(abstract)
-class AVaultViewCharacter : public ACharacter
+class AVaultViewCharacter : public ACharacter, public IDamageableInterface
 {
 	GENERATED_BODY()
 
@@ -35,6 +36,8 @@ class AVaultViewCharacter : public ACharacter
 	UCameraComponent* FollowCamera;
 	
 public:
+	virtual void TakeDamage(float DamageAmount) override;
+
 	// Camera for First-Person Perspective
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> FirstPersonCameraComponent;

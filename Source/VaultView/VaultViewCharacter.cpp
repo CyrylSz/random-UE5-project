@@ -246,3 +246,9 @@ void AVaultViewCharacter::NextWave()
 	WaveCount++;
 	OnWaveChanged.Broadcast(WaveCount);
 }
+
+void AVaultViewCharacter::TakeDamage(float DamageAmount)
+{
+	// Odejmujemy punkty zdrowia
+	ApplyHealthChange(-DamageAmount);
+}
