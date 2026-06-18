@@ -18,6 +18,6 @@ class VAULTVIEW_API IDamageableInterface
 	GENERATED_BODY()
 
 public:
-	// Funkcja do implementacji w klasach docelowych
+	// Function to implement in target classes
 	virtual void TakeDamage(float DamageAmount) = 0;
 };

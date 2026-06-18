@@ -1,4 +1,4 @@
-# VaultView (random-UE5-project)
+# random-UE5-project
 
 Random university project created in Unreal Engine 5 (and C++). It features a perspective switching system (TPP to FPP), basic player statistics, an item pickup system, and a custom UI HUD for tracking player stats. This repository is solely for a university assignment, but the project is named "VaultView" because this codebase will serve as the starting point for a separate, private project in the future.
 

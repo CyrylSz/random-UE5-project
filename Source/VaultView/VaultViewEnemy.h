@@ -24,35 +24,55 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float AttackDamage = 10.0f;
 
-	// Montage animacji ataku przypisywany w BP_Assassin
+	// Attack animation montage assigned in BP_Assassin
 	UPROPERTY(EditDefaultsOnly, Category = "Animation")
 	TObjectPtr<UAnimMontage> AttackMontage;
 
-	// Wywoluje animacje ataku przez AnimInstance
+	// === DEATH ANIMATIONS ===
+	// Assigned in BP_Assassin -> Class Defaults -> Animation
+	UPROPERTY(EditDefaultsOnly, Category = "Animation")
+	TObjectPtr<UAnimMontage> DeathMontage1;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Animation")
+	TObjectPtr<UAnimMontage> DeathMontage2;
+
+	// Timer to enable ragdoll after death animation ends
+	FTimerHandle DeathAnimTimer;
+
+	// Plays attack animation via AnimInstance
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	void PlayAttackAnimation();
 
-	// Timer do cyklicznego zadawania obrazen
+	// Timer for cyclic damage dealing
 	FTimerHandle DamageTickTimer;
-	
-	// Zabezpieczenie przed Garbage Collectorem (Wymóg 3.1)
+
+	// Protection against Garbage Collector
 	UPROPERTY(Transient)
 	TObjectPtr<AActor> OverlappingPlayer;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float HealthPoints = 50.0f;
 
-	// Wymóg 3.1 - Implementacja interfejsu przez wroga
+	// Flag - prevents multiple Die() calls
+	bool bIsDead = false;
+
+	// Enemy interface implementation
 	virtual void TakeDamage(float DamageAmount) override;
 
 	UFUNCTION()
 	void OnDamageOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-						UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
-						bool bFromSweep, const FHitResult& SweepResult);
+							UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+							bool bFromSweep, const FHitResult& SweepResult);
 
 	UFUNCTION()
 	void OnDamageOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-						UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+							UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	void DealDamageTick();
+
+	// Main death logic: stops AI, plays animation, then enables ragdoll
+	void Die();
+
+	// Called after death animation - enables physics simulation (ragdoll)
+	void EnableRagdoll();
 };

@@ -26,7 +26,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	TObjectPtr<class UBehaviorTree> BehaviorTree;
 
-	// Wymóg 3.3 - Jawne zdefiniowane komponenty
+	// Explicitly defined components
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<class UBehaviorTreeComponent> BehaviorTreeComponent;
 

@@ -3,15 +3,19 @@
 #include "VaultViewCharacter.h"
 #include "Engine/LocalPlayer.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/Controller.h"
+#include "GameFramework/PlayerStart.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "VaultView.h"
 #include "VaultViewHUDWidget.h"
+#include "VaultViewEnemy.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -56,8 +60,25 @@ AVaultViewCharacter::AVaultViewCharacter()
 	// By default, the First-Person camera is disabled (we start in Third-Person Perspective)
 	FirstPersonCameraComponent->SetActive(false); 
 
+	// Create weapon component - hidden until picked up
+	WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
+	WeaponMesh->SetupAttachment(GetMesh(), FName("WeaponSocket")); // Socket in character's hand
+	WeaponMesh->SetVisibility(false);                               // Hidden by default
+	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);// Weapon does not block
+
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+}
+
+void AVaultViewCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	
+	// Set initial visibility based on the wave
+	if (GetWorld() && GetWorld()->IsGameWorld())
+	{
+		UpdateWaveVisibility(WaveCount);
+	}
 }
 
 void AVaultViewCharacter::BeginPlay()
@@ -110,6 +131,12 @@ void AVaultViewCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AVaultViewCharacter::Look);
+
+		// Attack (requires IA_Attack assignment in BP_ThirdPersonCharacter)
+		if (AttackAction)
+		{
+			EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &AVaultViewCharacter::TryAttack);
+		}
 	}
 	else
 	{
@@ -249,6 +276,239 @@ void AVaultViewCharacter::NextWave()
 
 void AVaultViewCharacter::TakeDamage(float DamageAmount)
 {
-	// Odejmujemy punkty zdrowia
+	// Subtract health points
 	ApplyHealthChange(-DamageAmount);
 }
+
+void AVaultViewCharacter::EquipAxe()
+{
+	bHasWeapon = true;
+	if (WeaponMesh)
+	{
+		WeaponMesh->SetVisibility(true);
+	}
+}
+
+void AVaultViewCharacter::TryAttack()
+{
+	// Attack possible only with a weapon
+	if (!bHasWeapon) return;
+
+	// Sphere trace in front of player (range 150cm, radius 50cm)
+	const FVector Start = GetActorLocation();
+	const FVector End   = Start + GetActorForwardVector() * 150.0f;
+
+	TArray<FHitResult> Hits;
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(50.0f);
+
+	FCollisionObjectQueryParams ObjParams;
+	ObjParams.AddObjectTypesToQuery(ECC_Pawn); // Detects other Pawns (enemies)
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this); // Ignore the player
+
+	GetWorld()->SweepMultiByObjectType(Hits, Start, End, FQuat::Identity, ObjParams, Sphere, QueryParams);
+
+	for (const FHitResult& Hit : Hits)
+	{
+		AActor* HitActor = Hit.GetActor();
+		if (!HitActor || HitActor == this) continue;
+
+		// Call TakeDamage via interface (works on any IDamageable, including Assassin)
+		IDamageableInterface* Damageable = Cast<IDamageableInterface>(HitActor);
+		if (Damageable)
+		{
+			Damageable->TakeDamage(AttackDamage);
+		}
+	}
+}
+
+// ============================================================
+// WAVE SYSTEM
+// ============================================================
+
+void AVaultViewCharacter::TriggerWaveEnd()
+{
+	// Prevent multiple triggers if transition is already in progress
+	if (bWaveTransitioning) return;
+	bWaveTransitioning = true;
+
+	// Block player movement during transition
+	GetCharacterMovement()->DisableMovement();
+
+	// Start screen fade: transition from 0 (transparent) to 1 (black) over 0.5s
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC && PC->PlayerCameraManager)
+	{
+		PC->PlayerCameraManager->StartCameraFade(
+			0.0f, 1.0f,  // from transparent to black
+			0.5f,         // over 0.5 seconds
+			FLinearColor::Black,
+			false,        // do not fade audio
+			true          // hold on black after completion
+		);
+	}
+
+	// After 0.6s (0.1s buffer after full black), perform reset
+	GetWorldTimerManager().SetTimer(
+		WaveTransitionTimer,
+		this,
+		&AVaultViewCharacter::CompleteWaveTransition,
+		0.6f,
+		false
+	);
+}
+
+void AVaultViewCharacter::CompleteWaveTransition()
+{
+	// 1. Teleport player to PlayerStart
+	AActor* StartActor = UGameplayStatics::GetActorOfClass(GetWorld(), APlayerStart::StaticClass());
+	if (StartActor)
+	{
+		// +96 = half character capsule height, to prevent spawning under the floor
+		FVector SpawnLocation = StartActor->GetActorLocation() + FVector(0.f, 0.f, 96.f);
+		TeleportTo(SpawnLocation, StartActor->GetActorRotation());
+
+		// Reset controller (camera) rotation to PlayerStart direction
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (PC)
+		{
+			PC->SetControlRotation(StartActor->GetActorRotation());
+		}
+	}
+
+	// 2. Increase wave counter (triggers OnWaveChanged delegate -> HUD update)
+	NextWave();
+
+	// 3. Show message in the center of the screen (text for the JUST PASSED wave)
+	if (HUDWidget)
+	{
+		HUDWidget->ShowWaveMessage(GetWaveMessage(WaveCount - 1));
+	}
+
+	// 4. Destroy old enemies and spawn new ones for the current wave
+	SpawnEnemiesForWave(WaveCount);
+
+	// 5. Update visibility of objects related to specific wave
+	UpdateWaveVisibility(WaveCount);
+
+	// 6. Restore player movement
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+
+	// 7. Brighten screen: transition from black to transparent over 0.5s
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (PC && PC->PlayerCameraManager)
+	{
+		PC->PlayerCameraManager->StartCameraFade(
+			1.0f, 0.0f,  // from black to transparent
+			0.5f,
+			FLinearColor::Black,
+			false,
+			false         // do not hold - return to normal image
+		);
+	}
+
+	bWaveTransitioning = false;
+}
+
+FString AVaultViewCharacter::GetWaveMessage(int32 WaveIndex) const
+{
+	// Message displayed when transitioning FROM given wave to the next
+	switch (WaveIndex)
+	{
+		case 0: return TEXT("YOU WILL NEVER ESCAPE");
+		case 1: return TEXT("IMPRESSIVE... BUT USELESS");
+		case 2: return TEXT("OK... NOW IT'S REALLY OVER FOR YOU!");
+		default: return TEXT("...");
+	}
+}
+
+void AVaultViewCharacter::SpawnEnemiesForWave(int32 Wave)
+{
+	// Destroy all living enemies from previous wave (except those with "Ambush" tag)
+	TArray<AActor*> ExistingEnemies;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AVaultViewEnemy::StaticClass(), ExistingEnemies);
+	for (AActor* Enemy : ExistingEnemies)
+	{
+		// Skip pre-spawned enemies from traps / ceiling, so they are not removed from the map
+		if (Enemy && !Enemy->ActorHasTag(TEXT("Ambush")))
+		{
+			Enemy->Destroy();
+		}
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	if (Wave == 1)
+	{
+		// Wave 1: Assassins spawn via BP_AmbushTrigger in the corridor
+		// (not here - trigger volume will handle it when player enters the zone)
+		return;
+	}
+
+	if (Wave == 2 && EliteAssassinClass)
+	{
+		// Wave 2: 1 Elite Assassin - search for points with "SpawnElite" tag
+		TArray<AActor*> EliteSpawnPoints;
+		UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("SpawnElite"), EliteSpawnPoints);
+
+		if (EliteSpawnPoints.Num() > 0)
+		{
+			GetWorld()->SpawnActor<ACharacter>(
+				EliteAssassinClass,
+				EliteSpawnPoints[0]->GetActorTransform(),
+				SpawnParams
+			);
+		}
+	}
+	// Wave 0 and 3+: no spawn
+}
+
+void AVaultViewCharacter::UpdateWaveVisibility(int32 CurrentWave)
+{
+	// Create current wave prefix, e.g. "Wave_1"
+	FString CurrentWaveTag = FString::Printf(TEXT("Wave_%d"), CurrentWave);
+	
+	// Get all actors from scene (to check their tags)
+	// Only take actors that can be hidden/shown (not UI, PlayerController, etc.)
+	TArray<AActor*> AllActors;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AActor::StaticClass(), AllActors);
+	
+	for (AActor* Actor : AllActors)
+	{
+		if (!Actor) continue;
+		
+		bool bHasAnyWaveTag = false;
+		bool bMatchesCurrentWave = false;
+		
+		// Search actor tags
+		for (const FName& Tag : Actor->Tags)
+		{
+			FString TagStr = Tag.ToString();
+			
+			// If tag starts with "Wave_" (e.g. Wave_0, Wave_1, Wave_99)
+			if (TagStr.StartsWith(TEXT("Wave_")))
+			{
+				bHasAnyWaveTag = true;
+				
+				// If it is a tag EXACTLY matching current wave
+				if (TagStr == CurrentWaveTag)
+				{
+					bMatchesCurrentWave = true;
+					break; // Found its tag, no need to search further
+				}
+			}
+		}
+		
+		// If actor has ANY wave tag (meaning it was included in our visibility system)
+		if (bHasAnyWaveTag)
+		{
+			// Hide/show entire actor and its components (true = hidden, false = visible)
+			Actor->SetActorHiddenInGame(!bMatchesCurrentWave);
+			Actor->SetActorEnableCollision(bMatchesCurrentWave); // Also disable collision
+		}
+	}
+}
+
+

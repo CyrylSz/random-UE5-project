@@ -42,7 +42,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> FirstPersonCameraComponent;
 
-	// Wymóg 3.1 - Statystyki gracza: BlueprintReadOnly zgodnie z wymaganiami projektu
+	// Player statistics
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player Stats")
 	float HealthPoints = 100.0f;
 
@@ -78,7 +78,7 @@ public:
 	int32 KillCount = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
-	int32 WaveCount = 1;
+	int32 WaveCount = 0;
 
 	// Score delegate
 	UPROPERTY(BlueprintAssignable, Category = "Events")
@@ -111,6 +111,37 @@ public:
 
 	void ShowDeathScreen();
 
+	// === WAVE SYSTEM ===
+	// Enemy class assigned in BP_ThirdPersonCharacter (Standard Assassin)
+	UPROPERTY(EditDefaultsOnly, Category = "Wave System")
+	TSubclassOf<ACharacter> AssassinClass;
+
+	// Stronger enemy class for Wave 2
+	UPROPERTY(EditDefaultsOnly, Category = "Wave System")
+	TSubclassOf<ACharacter> EliteAssassinClass;
+
+	// Called by BP_JumpPad when player enters the pad
+	UFUNCTION(BlueprintCallable, Category = "Wave System")
+	void TriggerWaveEnd();
+
+private:
+	// Prevent multiple triggers during transition
+	bool bWaveTransitioning = false;
+
+	FTimerHandle WaveTransitionTimer;
+
+	// Called 0.5s after TriggerWaveEnd: teleport + spawn + message
+	void CompleteWaveTransition();
+
+	// Returns the text displayed when transitioning to the next wave
+	FString GetWaveMessage(int32 WaveIndex) const;
+
+	// Destroys old enemies and spawns new ones for the current wave
+	void SpawnEnemiesForWave(int32 Wave);
+
+	// Hides objects not belonging to the current wave, shows the correct ones
+	void UpdateWaveVisibility(int32 CurrentWave);
+
 protected:
 
 	/** Jump Input Action */
@@ -129,13 +160,39 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Input")
 	TObjectPtr<UInputAction> MouseLookAction;
 
+	/** Attack Input Action (LMB or E) */
+	UPROPERTY(EditAnywhere, Category="Input")
+	TObjectPtr<UInputAction> AttackAction;
+
 public:
 
 	/** Constructor */
 	AVaultViewCharacter();	
 
+public:
+
+	// === WEAPON SYSTEM ===
+	// Weapon mesh attached to "WeaponSocket" in character's hand
+	// Hidden by default - shows up after picking up a weapon from the floor
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UStaticMeshComponent> WeaponMesh;
+
+	// Does the player have a weapon equipped?
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	bool bHasWeapon = false;
+
+	// Called by BP_WeaponPickup when the player picks up the weapon
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	void EquipAxe();
+
+	// Called by input (E or LMB): sphere trace => damage enemies
+	void TryAttack();
+
 protected:
 	virtual void BeginPlay() override;
+
+	// Called after loading to set initial wave visibility
+	virtual void PostInitializeComponents() override;
 
 	/** Initialize input action bindings */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;

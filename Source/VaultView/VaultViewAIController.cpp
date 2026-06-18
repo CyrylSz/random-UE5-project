@@ -6,9 +6,9 @@
 #include "BehaviorTree/BehaviorTreeComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
-#include "VaultViewCharacter.h" // Sprawdzamy, czy widzimy gracza
+#include "VaultViewCharacter.h" // Check if we see the player
 #include "Perception/AISenseConfig_Sight.h"
-#include "VaultViewCharacter.h" // Sprawdzamy, czy widzimy gracza
+#include "VaultViewCharacter.h" // Check if we see the player
 
 AVaultViewAIController::AVaultViewAIController()
 {
@@ -21,12 +21,12 @@ AVaultViewAIController::AVaultViewAIController()
 	SightConfig->PeripheralVisionAngleDegrees = 90.f;
 	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
 
-	// POPRAWKA 3: Zdejmujemy filtry, żeby AI na 100% zobaczyło gracza
+	// Remove filters so AI can see the player
 	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
 	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
 	PerceptionComp->ConfigureSense(*SightConfig);
 
-	// Inicjalizacja jawnych komponentów AI
+	// Initialize explicit AI components
 	BehaviorTreeComponent = CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent"));
 	BlackboardComp = CreateDefaultSubobject<UBlackboardComponent>(TEXT("BlackboardComponent"));
 }
@@ -35,7 +35,7 @@ void AVaultViewAIController::OnPerceptionUpdated(AActor* Actor, FAIStimulus Stim
 {
 	if (!Actor->IsA<AVaultViewCharacter>()) return;
 
-	// Używamy naszego, jawnie zdefiniowanego Blackboarda
+	// Use our explicitly defined Blackboard
 	if (!BlackboardComp) return;
 
 	if (Stimulus.WasSuccessfullySensed())
@@ -64,7 +64,7 @@ void AVaultViewAIController::OnPossess(APawn* InPawn)
 
 	if (BehaviorTree && BehaviorTree->BlackboardAsset)
 	{
-		// POPRAWKA KRYTYCZNA: Podpięcie naszych komponentów pod wskaźniki silnika Unreal Engine
+		// Connect our components to Unreal Engine pointers
 		Blackboard = BlackboardComp;
 		BrainComponent = BehaviorTreeComponent;
 

@@ -5,13 +5,15 @@
 #include "VaultViewAIController.h"
 #include "Kismet/GameplayStatics.h"
 #include "VaultViewCharacter.h"
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 AVaultViewEnemy::AVaultViewEnemy()
 {
-	// POPRAWKA 1: Tick MUSI być włączony, inaczej ruch postaci i AI zamarza!
+	// Tick must be enabled for movement and AI
 	PrimaryActorTick.bCanEverTick = true;
 
-	// Automatyczne przypisanie kontrolera Artificial Intelligence po umieszczeniu na mapie
+	// Automatically possess AI when placed in world
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 	AIControllerClass = AVaultViewAIController::StaticClass();
 
@@ -19,7 +21,7 @@ AVaultViewEnemy::AVaultViewEnemy()
 	DamageCollision->SetupAttachment(RootComponent);
 	DamageCollision->SetCollisionProfileName(TEXT("Trigger"));
 
-	// POPRAWKA 2 (Twoja): Gwarancja w C++, że hitbox nie wytnie dziury w NavMeshu!
+	// Ensure hitbox doesn't affect NavMesh
 	DamageCollision->SetCanEverAffectNavigation(false);
 	
 	DamageCollision->OnComponentBeginOverlap.AddDynamic(this, &AVaultViewEnemy::OnDamageOverlapBegin);
@@ -37,15 +39,18 @@ void AVaultViewEnemy::PlayAttackAnimation()
 void AVaultViewEnemy::OnDamageOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	// POPRAWKA: Upewniamy się, że wróg atakuje TYLKO gracza, a nie samego siebie lub kolegów!
+	// Dead enemy doesn't attack
+	if (bIsDead) return;
+
+	// Ensure the enemy only attacks the player
 	if (OtherActor && OtherActor != this && OtherActor->IsA<AVaultViewCharacter>())
 	{
 		OverlappingPlayer = OtherActor;
 		
-		// Zadajemy pierwsze obrazenia natychmiast
+		// Deal first damage immediately
 		DealDamageTick();
 
-		// Uruchamiamy timer, by powtarzal funkcje co 1 sekunde w zapetleniu
+		// Start looping damage timer
 		GetWorldTimerManager().SetTimer(DamageTickTimer, this, &AVaultViewEnemy::DealDamageTick, 1.0f, true);
 	}
 }
@@ -55,7 +60,7 @@ void AVaultViewEnemy::OnDamageOverlapEnd(UPrimitiveComponent* OverlappedComp, AA
 {
 	if (OtherActor == OverlappingPlayer)
 	{
-		// Gracz uciekl, zatrzymujemy timer obrazen
+		// Player escaped, stop damage timer
 		GetWorldTimerManager().ClearTimer(DamageTickTimer);
 		OverlappingPlayer = nullptr;
 	}
@@ -63,33 +68,96 @@ void AVaultViewEnemy::OnDamageOverlapEnd(UPrimitiveComponent* OverlappedComp, AA
 
 void AVaultViewEnemy::DealDamageTick()
 {
-	if (OverlappingPlayer)
-	{
-		// Odtwarzamy animacje ataku przy kazdym tick'u obrazen
-		PlayAttackAnimation();
+	// Dead enemy doesn't deal damage
+	if (bIsDead || !OverlappingPlayer) return;
 
-		// Wywolujemy funkcje poprzez Interfejs!
-		IDamageableInterface* DamageableEntity = Cast<IDamageableInterface>(OverlappingPlayer);
-		if (DamageableEntity)
-		{
-			DamageableEntity->TakeDamage(AttackDamage);
-		}
+	// Play attack animation on each damage tick
+	PlayAttackAnimation();
+
+	// Call function via Interface
+	IDamageableInterface* DamageableEntity = Cast<IDamageableInterface>(OverlappingPlayer);
+	if (DamageableEntity)
+	{
+		DamageableEntity->TakeDamage(AttackDamage);
 	}
 }
 
 void AVaultViewEnemy::TakeDamage(float DamageAmount)
 {
+	// Ignore damage if already dead
+	if (bIsDead) return;
+
 	HealthPoints -= DamageAmount;
 	
 	if (HealthPoints <= 0.0f)
 	{
-		// POPRAWKA: Odnalezienie gracza i dodanie punktu zabójstwa przed śmiercią
-		AVaultViewCharacter* Player = Cast<AVaultViewCharacter>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
-		if (Player)
-		{
-			Player->AddKill();
-		}
-
-		Destroy();
+		Die();
 	}
+}
+
+void AVaultViewEnemy::Die()
+{
+	// Prevent double death
+	if (bIsDead) return;
+	bIsDead = true;
+
+	// 1. Stop damage timer and detach player
+	GetWorldTimerManager().ClearTimer(DamageTickTimer);
+	OverlappingPlayer = nullptr;
+	DamageCollision->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// 2. Detach AI controller (enemy stops chasing and attacking)
+	DetachFromControllerPendingDestroy();
+
+	// 3. Stop movement
+	GetCharacterMovement()->DisableMovement();
+	GetCharacterMovement()->StopMovementImmediately();
+
+	// 3.5. Remove "Ambush" tag so the body disappears when the wave passes
+	Tags.Remove(FName("Ambush"));
+
+	// 4. Add kill to player (kill counter +1 in HUD)
+	AVaultViewCharacter* Player = Cast<AVaultViewCharacter>(
+		UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
+	if (Player)
+	{
+		Player->AddKill();
+	}
+
+	// 5. Randomly select death animation (death1 or death2)
+	UAnimMontage* ChosenMontage = FMath::RandBool() ? DeathMontage1 : DeathMontage2;
+	// Fallback: if one is null, use the other
+	if (!ChosenMontage) ChosenMontage = DeathMontage1 ? DeathMontage1 : DeathMontage2;
+
+	float MontageDuration = 0.1f;
+	if (ChosenMontage && GetMesh() && GetMesh()->GetAnimInstance())
+	{
+		float Played = GetMesh()->GetAnimInstance()->Montage_Play(ChosenMontage, 1.0f);
+		if (Played > 0.f)
+		{
+			MontageDuration = Played;
+		}
+	}
+
+	// 6. Enable ragdoll after animation finishes (with 0.05s buffer)
+	GetWorldTimerManager().SetTimer(
+		DeathAnimTimer,
+		this,
+		&AVaultViewEnemy::EnableRagdoll,
+		FMath::Max(MontageDuration - 0.05f, 0.1f),
+		false
+	);
+}
+
+void AVaultViewEnemy::EnableRagdoll()
+{
+	if (!GetMesh()) return;
+
+	// Enable physics simulation on mesh (ragdoll)
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+	GetMesh()->SetSimulatePhysics(true);
+
+	// Capsule no longer blocks - body lies freely
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }

@@ -33,3 +33,33 @@ void UVaultViewHUDWidget::UpdateScore(int32 CurrentScore)
 		ScoreText->SetText(FText::FromString(FString::Printf(TEXT("Score: %d"), CurrentScore)));
 	}
 }
+
+void UVaultViewHUDWidget::ShowWaveMessage(FString Message)
+{
+	if (!WaveMessageText) return;
+
+	// Set text and show
+	WaveMessageText->SetText(FText::FromString(Message));
+	WaveMessageText->SetVisibility(ESlateVisibility::Visible);
+
+	// Hide automatically after 3 seconds
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			MessageHideTimer,
+			this,
+			&UVaultViewHUDWidget::HideWaveMessage,
+			3.0f,
+			false
+		);
+	}
+}
+
+void UVaultViewHUDWidget::HideWaveMessage()
+{
+	if (WaveMessageText)
+	{
+		WaveMessageText->SetVisibility(ESlateVisibility::Hidden);
+	}
+}
+

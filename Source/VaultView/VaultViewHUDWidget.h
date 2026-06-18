@@ -27,6 +27,10 @@ public:
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UTextBlock> ScoreText;
 
+	// Central text displayed during wave transition (BindWidgetOptional = does not crash if missing in BP)
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UTextBlock> WaveMessageText;
+
 	// Interface update functions
 	UFUNCTION()
 	void UpdateHP(float CurrentHP, float MaxHP);
@@ -39,4 +43,14 @@ public:
 
 	UFUNCTION()
 	void UpdateScore(int32 CurrentScore);
+
+	// Displays large text in the center of the screen for 3 seconds (e.g. "YOU WILL NEVER ESCAPE")
+	UFUNCTION()
+	void ShowWaveMessage(FString Message);
+
+private:
+	FTimerHandle MessageHideTimer;
+
+	void HideWaveMessage();
 };
+
