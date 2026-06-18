@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Components/BoxComponent.h"
+#include "Animation/AnimMontage.h"
 #include "DamageableInterface.h"
 #include "VaultViewEnemy.generated.h"
 
@@ -22,6 +23,14 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float AttackDamage = 10.0f;
+
+	// Montage animacji ataku przypisywany w BP_Assassin
+	UPROPERTY(EditDefaultsOnly, Category = "Animation")
+	TObjectPtr<UAnimMontage> AttackMontage;
+
+	// Wywoluje animacje ataku przez AnimInstance
+	UFUNCTION(BlueprintCallable, Category = "Animation")
+	void PlayAttackAnimation();
 
 	// Timer do cyklicznego zadawania obrazen
 	FTimerHandle DamageTickTimer;

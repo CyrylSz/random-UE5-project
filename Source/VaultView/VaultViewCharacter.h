@@ -29,11 +29,11 @@ class AVaultViewCharacter : public ACharacter, public IDamageableInterface
 
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	USpringArmComponent* CameraBoom;
+	TObjectPtr<USpringArmComponent> CameraBoom;
 
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
-	UCameraComponent* FollowCamera;
+	TObjectPtr<UCameraComponent> FollowCamera;
 	
 public:
 	virtual void TakeDamage(float DamageAmount) override;
@@ -42,17 +42,17 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> FirstPersonCameraComponent;
 
-	// Required project variables
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
+	// Wymóg 3.1 - Statystyki gracza: BlueprintReadOnly zgodnie z wymaganiami projektu
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player Stats")
 	float HealthPoints = 100.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player Stats")
 	float MaxHealthPoints = 100.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player Stats")
 	float AttackDamage = 25.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Stats")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player Stats")
 	int32 Score = 0;
 
 	// Inventory
@@ -115,19 +115,19 @@ protected:
 
 	/** Jump Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* JumpAction;
+	TObjectPtr<UInputAction> JumpAction;
 
 	/** Move Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* MoveAction;
+	TObjectPtr<UInputAction> MoveAction;
 
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* LookAction;
+	TObjectPtr<UInputAction> LookAction;
 
 	/** Mouse Look Input Action */
 	UPROPERTY(EditAnywhere, Category="Input")
-	UInputAction* MouseLookAction;
+	TObjectPtr<UInputAction> MouseLookAction;
 
 public:
 
