@@ -22,17 +22,18 @@ protected:
 
 	/** Input Mapping Contexts */
 	UPROPERTY(EditAnywhere, Category ="Input|Input Mappings")
-	TArray<UInputMappingContext*> DefaultMappingContexts;
+	TArray<TObjectPtr<UInputMappingContext>> DefaultMappingContexts;
 
 	/** Input Mapping Contexts */
 	UPROPERTY(EditAnywhere, Category="Input|Input Mappings")
-	TArray<UInputMappingContext*> MobileExcludedMappingContexts;
+	TArray<TObjectPtr<UInputMappingContext>> MobileExcludedMappingContexts;
 
 	/** Mobile controls widget to spawn */
 	UPROPERTY(EditAnywhere, Category="Input|Touch Controls")
 	TSubclassOf<UUserWidget> MobileControlsWidgetClass;
 
 	/** Pointer to the mobile controls widget */
+	UPROPERTY()
 	TObjectPtr<UUserWidget> MobileControlsWidget;
 
 	/** Gameplay initialization */

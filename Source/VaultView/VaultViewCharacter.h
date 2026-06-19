@@ -19,7 +19,6 @@ DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
  *  A simple player-controllable third person character
  *  Implements a controllable orbiting camera
  */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDamagedSignature, float, CurrentHP, float, MaxHP);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStatsChangedSignature, int32, NewValue);
 
 UCLASS(abstract)
@@ -42,12 +41,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> FirstPersonCameraComponent;
 
-	// Player statistics
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player Stats")
-	float HealthPoints = 100.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player Stats")
-	float MaxHealthPoints = 100.0f;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Health")
+	TObjectPtr<class UVaultViewHealthComponent> HealthComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Player Stats")
 	float AttackDamage = 25.0f;
@@ -64,8 +59,6 @@ public:
 	void ToggleCameraPerspective();
 
 	// Project required delegates
-	UPROPERTY(BlueprintAssignable, Category = "Events")
-	FOnDamagedSignature OnDamaged;
 
 	UPROPERTY(BlueprintAssignable, Category = "Events")
 	FOnStatsChangedSignature OnWaveChanged;
@@ -109,6 +102,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Player Stats")
 	void ApplyHealthChange(float HealthChange);
 
+	UFUNCTION()
 	void ShowDeathScreen();
 
 	// === WAVE SYSTEM ===

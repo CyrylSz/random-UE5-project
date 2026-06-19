@@ -16,6 +16,7 @@
 #include "VaultView.h"
 #include "VaultViewHUDWidget.h"
 #include "VaultViewEnemy.h"
+#include "VaultViewHealthComponent.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -68,6 +69,8 @@ AVaultViewCharacter::AVaultViewCharacter()
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+
+	HealthComponent = CreateDefaultSubobject<UVaultViewHealthComponent>(TEXT("HealthComponent"));
 }
 
 void AVaultViewCharacter::PostInitializeComponents()
@@ -85,6 +88,12 @@ void AVaultViewCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Bind death event independently of HUD
+	if (HealthComponent)
+	{
+		HealthComponent->OnDeath.AddDynamic(this, &AVaultViewCharacter::ShowDeathScreen);
+	}
+
 	// Create HUD widget from editor class
 	if (HUDWidgetClass)
 	{
@@ -94,13 +103,19 @@ void AVaultViewCharacter::BeginPlay()
 			HUDWidget->AddToViewport(); // Show on screen
 
 			// Bind widget functions to character delegates
-			OnDamaged.AddDynamic(HUDWidget, &UVaultViewHUDWidget::UpdateHP);
+			if (HealthComponent)
+			{
+				HealthComponent->OnDamaged.AddDynamic(HUDWidget, &UVaultViewHUDWidget::UpdateHP);
+			}
 			OnWaveChanged.AddDynamic(HUDWidget, &UVaultViewHUDWidget::UpdateWave);
 			OnKillsChanged.AddDynamic(HUDWidget, &UVaultViewHUDWidget::UpdateKills);
 			OnScoreChanged.AddDynamic(HUDWidget, &UVaultViewHUDWidget::UpdateScore);
 
 			// Refresh UI on game start
-			OnDamaged.Broadcast(HealthPoints, MaxHealthPoints);
+			if (HealthComponent)
+			{
+				HealthComponent->OnDamaged.Broadcast(HealthComponent->HealthPoints, HealthComponent->MaxHealthPoints);
+			}
 			OnWaveChanged.Broadcast(WaveCount);
 			OnKillsChanged.Broadcast(KillCount);
 			OnScoreChanged.Broadcast(Score);
@@ -224,14 +239,9 @@ void AVaultViewCharacter::ToggleCameraPerspective()
 
 void AVaultViewCharacter::ApplyHealthChange(float HealthChange)
 {
-	// Clamp health points between 0 and MaxHealthPoints
-	HealthPoints = FMath::Clamp(HealthPoints + HealthChange, 0.0f, MaxHealthPoints);
-
-	OnDamaged.Broadcast(HealthPoints, MaxHealthPoints);
-
-	if (HealthPoints <= 0.0f)
+	if (HealthComponent)
 	{
-		ShowDeathScreen();
+		HealthComponent->ApplyHealthChange(HealthChange);
 	}
 }
 

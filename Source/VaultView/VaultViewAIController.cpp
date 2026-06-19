@@ -8,6 +8,7 @@
 #include "Perception/AISenseConfig_Sight.h"
 #include "VaultViewCharacter.h" // Check if we see the player
 #include "Perception/AISenseConfig_Sight.h"
+#include "Perception/AISenseConfig_Hearing.h"
 #include "VaultViewCharacter.h" // Check if we see the player
 
 AVaultViewAIController::AVaultViewAIController()
@@ -25,6 +26,15 @@ AVaultViewAIController::AVaultViewAIController()
 	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
 	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
 	PerceptionComp->ConfigureSense(*SightConfig);
+
+	UAISenseConfig_Hearing* HearingConfig = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("HearingConfig"));
+	HearingConfig->HearingRange = 1500.0f;
+	HearingConfig->DetectionByAffiliation.bDetectEnemies = true;
+	HearingConfig->DetectionByAffiliation.bDetectFriendlies = true;
+	HearingConfig->DetectionByAffiliation.bDetectNeutrals = true;
+	PerceptionComp->ConfigureSense(*HearingConfig);
+
+	PerceptionComp->SetDominantSense(SightConfig->GetSenseImplementation());
 
 	// Initialize explicit AI components
 	BehaviorTreeComponent = CreateDefaultSubobject<UBehaviorTreeComponent>(TEXT("BehaviorTreeComponent"));
