@@ -1,4 +1,12 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
+// ==============================================================================
+// AI DISCLOSURE AND DOCUMENTATION:
+// This file was implemented with the assistance of AI, based on the requirements 
+// of the UEC project. The foundational concepts and initial structures were 
+// adapted from the course conducted by Oleksandr Zimenko at PJATK, and have 
+// been significantly expanded and modified using AI to meet the project's 
+// specific technical requirements.
+// ==============================================================================
 
 #include "VaultViewCharacter.h"
 #include "Engine/LocalPlayer.h"

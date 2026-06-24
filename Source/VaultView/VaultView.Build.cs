@@ -1,4 +1,9 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
+// ==============================================================================
+// AI DISCLOSURE AND DOCUMENTATION:
+// This file was implemented entirely with the assistance of AI, to fulfill 
+// the specific technical requirements of the UEC project.
+// ==============================================================================
 
 using UnrealBuildTool;
 
@@ -19,26 +24,13 @@ public class VaultView : ModuleRules
 			"GameplayStateTreeModule",
 			"UMG",
 			"Slate",
-            "SlateCore"
+			"SlateCore"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 
 		PublicIncludePaths.AddRange(new string[] {
-			"VaultView",
-			"VaultView/Variant_Platforming",
-			"VaultView/Variant_Platforming/Animation",
-			"VaultView/Variant_Combat",
-			"VaultView/Variant_Combat/AI",
-			"VaultView/Variant_Combat/Animation",
-			"VaultView/Variant_Combat/Gameplay",
-			"VaultView/Variant_Combat/Interfaces",
-			"VaultView/Variant_Combat/UI",
-			"VaultView/Variant_SideScrolling",
-			"VaultView/Variant_SideScrolling/AI",
-			"VaultView/Variant_SideScrolling/Gameplay",
-			"VaultView/Variant_SideScrolling/Interfaces",
-			"VaultView/Variant_SideScrolling/UI"
+			"VaultView"
 		});
 
 		// Uncomment if you are using Slate UI

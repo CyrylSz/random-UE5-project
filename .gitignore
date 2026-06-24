@@ -9,6 +9,7 @@ Build/
 .vs/
 .idea/
 .vscode/
+.vsconfig
 *.sln
 *.suo
 *.opensdf
@@ -24,14 +25,19 @@ Thumbs.db
 Plugins/*/Binaries/
 Plugins/*/Intermediate/
 
-# (Optional) Ignore generated map lighting data if it takes too much space
-# *_BuiltData.uasset
+# Ignore generated map lighting data
+*_BuiltData.uasset
 
 # Ignore developer personal test folders
 Content/Developers/
+Content/Collections/
 
-# Exclude licensed Marketplace assets (required for public repository)
+# Ignore licensed Marketplace assets (required for public repository)
 Content/ModularSciFiStation/
 Content/SciFi_BioLaboratory/
 Content/Adventure_Pack/
 Content/Assassin/
+
+# Other
+lekcje/
+global.json

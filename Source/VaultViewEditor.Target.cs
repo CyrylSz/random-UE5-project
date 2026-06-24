@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 public class VaultViewEditorTarget : TargetRules
 {
-	public VaultViewEditorTarget(TargetInfo Target) : base(Target)
+	public VaultViewEditorTarget( TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Editor;
 		DefaultBuildSettings = BuildSettingsVersion.V5;
